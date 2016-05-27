@@ -12,10 +12,10 @@ import javax.swing.JFrame;
 
 public class Window extends Canvas {
 	
-	JFrame frame;
+	public JFrame frame;
 	int width, height;
 	String title;
-	BufferedImage image;
+	public BufferedImage image;
 	public int[] pixels;
 	
 	public Window(int width, int height, String title){
@@ -27,10 +27,15 @@ public class Window extends Canvas {
 		frame.setResizable(false);
 		this.setPreferredSize(new Dimension(width, height));
 		frame.add(this);
+		addKeyListener(new Keyboard());
+		addMouseMotionListener(new Mouse());
+		addMouseListener(new Mouse());
+		addMouseWheelListener(new Mouse());
 		frame.pack();
 		frame.setVisible(true);
 		image = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
 		pixels = ((DataBufferInt) image.getRaster().getDataBuffer()).getData();
+		this.requestFocusInWindow();
 	}
 	
 	public void render(){

@@ -1,27 +1,68 @@
 package com.walkers.line.trace;
 
-import java.util.Random;
+import java.io.BufferedReader;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 
 public class Map {
-	int size;
-	boolean[] map = {
-			true,true,true,true,true,true,true,true,
-			true,false,false,false,false,false,false,true,
-			true,false,false,false,false,false,false,true,
-			true,false,false,false,false,false,false,true,
-			true,false,false,true,false,false,false,true,
-			true,false,false,false,false,false,false,true,
-			true,false,false,false,false,false,false,true,
-			true,true,true,true,true,true,true,true
-	};
+	public int width;
+	public int height;
+	float playerStartX;
+	float playerStartY;
+	float playerStartDir;
+	String mapName;
+	//String nextLevel;
+	//int textureWidth = 32;
+	public int[] map;
+	Main main;
 	
-	Map(int size){
-		this.size = size;
-		//map = new boolean[size*size];
-		Random rand = new Random();
+	public Map(String name, int width, int height){
+		this.width = width;
+		this.height = height;
+		map = new int[width*height];
+		playerStartX = 1.5f;
+		playerStartY = 1.5f;
+		playerStartDir = 0;
 	}
 	
-	Ray cast(int x, int y, float angle, int range){
+	public Map(InputStream inputStream, Main main){
+		this.main = main;
+		loadLevel(inputStream);
+		//Random rand = new Random();
+	}
+	
+	public void loadLevel(InputStream inputStream){
+		try {
+			BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
+			mapName = reader.readLine();
+			int width = Integer.parseInt(reader.readLine());
+			int height = Integer.parseInt(reader.readLine());
+			playerStartX = Float.parseFloat(reader.readLine());
+			playerStartY = Float.parseFloat(reader.readLine());
+			playerStartDir = Float.parseFloat(reader.readLine());
+			map = new int[width*height];
+			for(int y = 0; y < height; y++){
+				String line = reader.readLine();
+				String tiles[] = line.split(",");
+				if(tiles.length != width)
+					System.err.println("Width of map data not same as width of map!");
+				for(int x = 0; x < width; x++){
+					map[x + y * width] = Integer.parseInt(tiles[x]);
+				}
+			}
+			//nextLevel = reader.readLine();
+			reader.close();
+			this.width = width;
+			this.height = height;
+		} catch (NumberFormatException | IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
+	
+	Ray cast(float x, float y, float angle, float range){
 		float rayDirY = (float)Math.sin(angle);
 		float rayDirX = (float)Math.cos(angle);
 		//int destX = (int)Math.ceil(x + (run * range));
@@ -80,17 +121,67 @@ public class Map {
 	          side = 1;
 	        }
 	        //Check if ray has hit a wall
-	        if (map[mapX + mapY * size]) hit = true;
+	        if (mapX < width && mapX >= 0 && mapY < height && mapY >= 0 && map[mapX + mapY * width] != 0) hit = true;
 	      } 
 	      
-	      if (side == 0) perpWallDist = (mapX - x + (1 - stepX) / 2) / rayDirX;
-	      else           perpWallDist = (mapY - y + (1 - stepY) / 2) / rayDirY;
+	      if (side == 0) perpWallDist = ((float)mapX - x + (1 - stepX) / 2) / rayDirX;
+	      else           perpWallDist = ((float)mapY - y + (1 - stepY) / 2) / rayDirY;
 	      
+	      //calculate value of wallX
+	      float wallX; //where exactly the wall was hit
+	      if (side == 0) wallX = y + perpWallDist * rayDirY;
+	      else           wallX = x + perpWallDist * rayDirX;
+	      wallX -= (int)Math.floor((wallX));
+
 	      Ray ray = new Ray();
+	      ray.texIndex = map[mapX + mapY * width]-1;
+	      int textureWidth = TextureManager.getTexture(ray.texIndex).getWidth();
+	      //x coordinate on the texture
+	      int texX = (int)(wallX * (float)textureWidth);
+	      if(side == 0 && rayDirX < 0) texX = textureWidth - texX - 1;
+	      if(side == 1 && rayDirY > 0) texX = textureWidth - texX - 1;
+	      
 	      ray.hitWall = true;
 	      ray.distance = perpWallDist;
+	      if(ray.distance > range){
+	    	  return new Ray();
+	      }
+	      ray.texX = texX;
+	      ray.x = mapX;
+	      ray.y = mapY;
+	      switch(map[mapX + mapY * width]){
+	      case 1:
+	    	  ray.color = 0xffff0000;
+	    	  break;
+	      case 2:
+	    	  ray.color = 0xff00ff00;
+	    	  break;
+	      case 3:
+	    	  ray.color = 0xff0000ff;
+	    	  break;
+	      case 4:
+	    	  ray.color = 0xffff00ff;
+	    	  break;
+	      case 5:
+	    	  ray.color = 0xffffff00;
+	    	  break;
+	      }
 	      return ray;
 	      
+	}
+	
+	public void updateTile(int tileIndex, int x, int y){
+		
+	}
+	
+	public void useTile(int tileIndex, int x, int y){
+		if(tileIndex == 2 || tileIndex == 3){
+			System.out.println("using door");
+			map[x + y * width] = 0;
+		}else if(tileIndex == 4){
+			//loadLevel(Map.class.getResourceAsStream("/Maps/"+nextLevel));
+			//main.player = new Player(playerStartX, playerStartY, playerStartDir, this);
+		}
 	}
 
 }
